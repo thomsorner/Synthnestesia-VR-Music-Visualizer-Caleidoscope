@@ -156,7 +156,8 @@ modulaciones por audio,
 viñeteado y ajustes de intensidad global.
 
 El resultado es una visualización psicodélica, envolvente y altamente reactiva al sonido.
-APK: https://drive.google.com/file/d/119-O8FNaVEEeyMC1ttv_PDeBWTQ2dtdo/view?usp=sharing
+
+APK: [https://drive.google.com/file/d/119-O8FNaVEEeyMC1ttv_PDeBWTQ2dtdo/view?usp=sharing](https://drive.google.com/file/d/11h3aXbX7pcz_NV4gSyEZKiGPhfl7enLZ/view?usp=sharing)
 
 Bitácora de desarrollo
 
