@@ -1,16 +1,162 @@
-Synthnestesia - v0.1.0
+v0.1.0 — Descripción del Prototipo Actual
 
-Bitácora abierta de una exploración sinestésica en VR
+Este prototipo corresponde a la versión actualmente funcional del proyecto Synthnestesia, una aplicación VR en Unity que genera visuales inmersivos reactivos al sonido mediante un sistema de análisis espectral en tiempo real y un shader fractal adaptado para su uso en un entorno 360°.
 
-Este repositorio contiene la versión 0.0.3, una prueba de concepto funcional desarrollada en Unity 2022.3.57f1 para dispositivos Android con integración del SDK de Google Cardboard. Esta versión está en una etapa temprana de desarrollo y no constituye un producto final, sino una serie de experimentos que buscan validar hipótesis técnicas y sensoriales en torno a la sinestesia simulada a través de realidad virtual.
+La escena base del prototipo está compuesta por tres módulos principales: Player, AudioReactiveBus y SkyDome, cada uno cumpliendo una función específica dentro del flujo de captura, procesamiento y representación visual del audio.
 
-Este espacio no solo recopila el código fuente y documentación técnica, sino que funciona como bitácora de desarrollo y canal de interacción con la comunidad. Tu retroalimentación es valiosa: el proyecto está concebido como un espacio abierto a la colaboración, el aprendizaje colectivo y la construcción compartida.
+1. Player
 
-Este proyecto nace del deseo de expandir la percepción humana mediante tecnología inmersiva. Utilizando realidad virtual como medio, busca simular la sinestesia como fenómeno estético, mezclando estímulos auditivos y visuales en un entorno envolvente.
+El Player se ubica en el centro de la escena y contiene los elementos necesarios para la visualización en Google Cardboard. Agrupa:
 
+Main Camera (vista principal del usuario).
+
+CardBoardReticle y su script, que funcionan como puntero dentro del visor VR.
+
+Componentes requeridos por la integración con Google XR:
+
+UniversalAdditionalCameraData
+
+TracedPoseDriver (maneja la rotación de la cámara en VR).
+
+AudioListener (captura el audio global para los cálculos del espectro).
+
+Este módulo sirve como base para la experiencia inmersiva, asegurando un tracking estable y una visualización centralizada dentro del domo.
+
+2. AudioReactiveBus
+
+El AudioReactiveBus es el núcleo del sistema: el único punto de entrada, análisis y distribución de los datos de audio. Su diseño consolida en un solo componente la carga del archivo de sonido, el cálculo de la FFT, el suavizado temporal, la generación de texturas y la transmisión de datos al shader.
+
+2.1 Carga y reproducción de audio
+
+El módulo carga un archivo WAV desde StreamingAssets mediante una rutina asíncrona con UnityWebRequestMultimedia.
+
+Una vez decodificado, asigna la pista a un AudioSource interno.
+
+Desde el inspector es posible activar:
+
+reproducción automática,
+
+looping,
+
+mute (para evitar salida física del audio sin afectar el análisis).
+
+2.2 FFT y procesamiento espectral
+
+En cada fotograma:
+
+Se ejecuta una Transformada Rápida de Fourier (FFT) vía GetSpectrumData.
+
+El tamaño de la FFT (32–1024 muestras) se ajusta automáticamente a potencias de dos.
+
+El vector espectral es procesado mediante:
+
+normalización y ganancia,
+
+EMA (Exponential Moving Average) controlado por un parámetro smoothing.
+
+El resultado es almacenado en un arreglo normalizado (0–1) que representa un espectro suave, apto para animación visual.
+
+2.3 Textura 1D para el shader
+
+El espectro procesado se empaqueta en una textura 1D, con un pixel de alto, actualizada cada frame.
+Cada columna corresponde a un bin de frecuencia, permitiendo una lectura directa dentro del shader.
+
+2.4 Bandas de frecuencia
+
+Además del espectro completo, el módulo calcula tres promedios agregados:
+
+Baja (20–250 Hz)
+
+Media (250–2000 Hz)
+
+Alta (2000–8000 Hz)
+
+Estos valores son ajustados dinámicamente según el sample rate del dispositivo y permiten controlar efectos globales del shader (pulsos, destellos, variaciones de escala, etc.).
+
+2.5 Evento de actualización
+
+Al finalizar cada ciclo, el módulo envía la información espectral procesada al shader mediante un evento, asegurando sincronía entre el sonido y las animaciones.
+
+3. SkyDome
+
+El SkyDome es una esfera que encapsula al Player y sirve como superficie de proyección del shader audio reactivo.
+
+Incluye:
+
+Material con el shader fractal adaptado.
+
+AudioVisualizerBinder, que recibe los datos provenientes del AudioReactiveBus.
+
+Selección del estilo visual
+
+Para definir la estética fractal del prototipo se elaboró un moodboard con shaders de Shadertoy, buscando específicamente:
+
+patrones caleidoscópicos o fractales,
+
+alta reactividad al sonido,
+
+compatibilidad con visualización 360° (túneles, espacios envolventes).
+
+Tras evaluar doce candidatos, se seleccionó “MandelKoch – Music Visualiser” por su capacidad de combinar fractales tipo Mandelbrot con modulaciones derivadas de múltiples bandas de frecuencia.
+
+4. Shader
+
+El shader elegido fue adaptado a un Unlit Shader URP con varias optimizaciones para VR móvil. Recibe parámetros configurables desde el inspector y desde la textura FFT enviadas por el AudioReactiveBus.
+
+4.1 Parámetros principales
+
+_TimeScale, _Intensity
+
+_FFTtex (textura 1D con los datos del espectro)
+
+_UseFFT
+
+_UVScale / _UVRotate
+
+_VignetteAmt
+
+4.2 Etapa de vértices
+
+Genera un lat-long mapping usando la normal del fragmento para proyectar correctamente el fractal en el domo.
+
+4.3 Lectura del espectro
+
+Lee cuatro puntos del espectro (f0–f3) correspondientes a frecuencias bajas, medias y altas, que modulan:
+
+deformación del espacio fractal,
+
+velocidad del tiempo interno,
+
+escala y zoom,
+
+color e intensidad.
+
+4.4 Coordenadas fractales
+
+Aplica rotaciones dependientes del audio, escalamiento dinámico y simetrías tipo Koch para generar un espacio UV recursivo apto para fractales.
+
+4.5 Mandelbrot optimizado
+
+Implementación móvil con:
+
+64 iteraciones,
+
+test de cardioide y bulb para descarte rápido,
+
+smooth iteration count para transiciones suaves.
+
+La imagen final mezcla:
+
+fractal Koch,
+
+Mandelbrot coloreado,
+
+modulaciones por audio,
+
+viñeteado y ajustes de intensidad global.
+
+El resultado es una visualización psicodélica, envolvente y altamente reactiva al sonido.
 APK: https://drive.google.com/file/d/119-O8FNaVEEeyMC1ttv_PDeBWTQ2dtdo/view?usp=sharing
-
-Guía de instalación del proyecto en Unity pendiente
 
 Bitácora de desarrollo
 
